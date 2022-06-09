@@ -31,13 +31,13 @@ public class WikimediaChangeHandler implements EventHandler {
   }
 
   @Override public void onMessage(String event, MessageEvent messageEvent) throws Exception {
-    log.info("message received");
+    log.info("message received: - "+ messageEvent.getData());
     //async
     kafkaProducer.send(new ProducerRecord<>(topic, messageEvent.getData()));
 
   }
 
-  @Override public void onComment(String comment) throws Exception {
+  @Override public void onComment(String comment) {
     //nothing here, intentionally blank
   }
 
