@@ -20,9 +20,13 @@ public class WikimediaChangeProducer {
     properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "http://127.0.0.1:9092");
     properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
     properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+
+    // Safe Config
     properties.setProperty(ProducerConfig.ACKS_CONFIG, "-1");
     properties.setProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "5000");
     properties.setProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "1000");
+    properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+    properties.setProperty(ProducerConfig.RETRIES_CONFIG, String.valueOf(Integer.MAX_VALUE));
 
     KafkaProducer<String, String> kafkaProducer = new KafkaProducer<>(properties);
 
