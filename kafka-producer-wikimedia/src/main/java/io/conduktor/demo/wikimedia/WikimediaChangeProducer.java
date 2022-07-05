@@ -23,11 +23,12 @@ public class WikimediaChangeProducer {
 
     // Safe Config
     properties.setProperty(ProducerConfig.ACKS_CONFIG, "-1");
-    properties.setProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "5000");
-    properties.setProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "1000");
+    properties.setProperty(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG, "150");
+    properties.setProperty(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, "30");
     properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
     properties.setProperty(ProducerConfig.RETRIES_CONFIG, String.valueOf(Integer.MAX_VALUE));
-
+    properties.setProperty(ProducerConfig.LINGER_MS_CONFIG, "10");
+    properties.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, Integer.toString(32 * 1024));
     KafkaProducer<String, String> kafkaProducer = new KafkaProducer<>(properties);
 
     EventHandler handler = new WikimediaChangeHandler(kafkaProducer, TOPIC_NAME);
@@ -40,7 +41,6 @@ public class WikimediaChangeProducer {
     source.start();
 
     Thread.sleep(TimeUnit.MINUTES.toMillis(10));
-
 
   }
 
