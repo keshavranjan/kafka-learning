@@ -1,4 +1,4 @@
-import org.apache.http.entity.ContentType;
+import com.google.gson.JsonParser;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -13,7 +13,6 @@ import org.opensearch.common.xcontent.XContentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 
@@ -41,15 +40,20 @@ public class OpenSearchConsumerMain {
             while (true) {
                 ConsumerRecords<String, String> records = myKafkaConsumer.poll(Duration.ofMillis(3000));
                 int recorded = records.count();
-                log.info("recieved {} records", recorded);
+                log.info("received {} records", recorded);
                 for (ConsumerRecord<String, String> record : records) {
                     try {
-                        IndexRequest request = new IndexRequest(indexName).source(record.value(), XContentType.JSON);
+                        //extract the id for idempotence
+                        String id = extractId(record.value());
+                        IndexRequest request = new IndexRequest(indexName).source(record.value(), XContentType.JSON).id(id);
                         IndexResponse indexResponse = openSearchClient.index(request, RequestOptions.DEFAULT);
                         log.info("inserted doc into open search with id: {}", indexResponse.getId());
                     } catch (Exception e) {
                         // ignore
                     }
+                    //committing offset manually since auto commit is disabled
+                    myKafkaConsumer.commitAsync();
+                    log.info("offset committed records {}", recorded);
                 }
             }
 
@@ -66,5 +70,13 @@ public class OpenSearchConsumerMain {
 
 
         //System.out.println("Main Class");
+    }
+
+
+    /*returns the id from json object
+     */
+    private static String extractId(String value) {
+        return JsonParser.parseString(value).getAsJsonObject().get("meta").getAsJsonObject().get("id").getAsString();
+
     }
 }
