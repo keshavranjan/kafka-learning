@@ -3,6 +3,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.opensearch.OpenSearchStatusException;
+import org.opensearch.action.bulk.BulkRequest;
+import org.opensearch.action.bulk.BulkResponse;
 import org.opensearch.action.index.IndexRequest;
 import org.opensearch.action.index.IndexResponse;
 import org.opensearch.client.RequestOptions;
@@ -38,25 +40,36 @@ public class OpenSearchConsumerMain {
             }
             myKafkaConsumer.subscribe(Collections.singleton("wikimedia.recentchange"));
             while (true) {
-                ConsumerRecords<String, String> records = myKafkaConsumer.poll(Duration.ofMillis(3000));
+                ConsumerRecords<String, String> records = myKafkaConsumer.poll(Duration.ofMillis(10000));
                 int recorded = records.count();
                 log.info("received {} records", recorded);
+                BulkRequest bulkRequest = new BulkRequest();
                 for (ConsumerRecord<String, String> record : records) {
                     try {
+
                         //extract the id for idempotence
                         String id = extractId(record.value());
-                        IndexRequest request = new IndexRequest(indexName).source(record.value(), XContentType.JSON).id(id);
-                        IndexResponse indexResponse = openSearchClient.index(request, RequestOptions.DEFAULT);
-                        log.info("inserted doc into open search with id: {}", indexResponse.getId());
+                        IndexRequest indexRequest = new IndexRequest(indexName).source(record.value(), XContentType.JSON).id(id);
+//                        IndexResponse indexResponse = openSearchClient.index(request, RequestOptions.DEFAULT);
+                        bulkRequest.add(indexRequest);
+//                        log.info("inserted doc into open search with id: {}", indexResponse.getId());
                     } catch (Exception e) {
                         // ignore
                     }
-                    //committing offset manually since auto commit is disabled
-                    myKafkaConsumer.commitAsync();
-                    log.info("offset committed records {}", recorded);
-                }
-            }
 
+                    //Sending the bulk request instead of individual request
+
+                }
+                if(bulkRequest.numberOfActions() > 0){
+                    BulkResponse bulkResponse= openSearchClient.bulk(bulkRequest, RequestOptions.DEFAULT);
+                    log.info("sent bulk requests for records {}", bulkResponse.getItems().length);
+                }
+                Thread.sleep(1000);
+                //committing offset manually since auto commit is disabled
+                myKafkaConsumer.commitAsync();
+                log.info("offset committed records {}", recorded);
+
+            }
 
         } catch (OpenSearchStatusException e) {//This block should never get executed
             log.info("Wikimedia index already exists....", e);
